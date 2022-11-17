@@ -7,12 +7,19 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class ExploreTransactionsApplication implements CommandLineRunner {
 
-	public static void main(String[] args) {
-		SpringApplication.run(ExploreTransactionsApplication.class, args);
-	}
+  private final Sandbox sandbox;
 
-	@Override
-	public void run(String... args) {
-		System.out.println("Hello\uD83D\uDE03 ");
-	}
+  public ExploreTransactionsApplication(Sandbox sandbox) {
+    this.sandbox = sandbox;
+  }
+
+  public static void main(String[] args) {
+    SpringApplication.run(ExploreTransactionsApplication.class, args);
+  }
+
+  @Override
+  public void run(String... args) {
+    System.out.println("Hello\uD83D\uDE03 ");
+    sandbox.runSandbox();
+  }
 }
