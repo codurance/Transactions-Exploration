@@ -14,10 +14,16 @@ repositories {
 
 dependencies {
 //	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+
+    // Relevant for Experimentation
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    runtimeOnly 'mysql:mysql-connector-java'
+    implementation 'me.paulschwarz:spring-dotenv:2.5.4'
+
+
+    // Other tools
     implementation 'org.apache.commons:commons-lang3:3.0'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    runtimeOnly 'mysql:mysql-connector-java'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
