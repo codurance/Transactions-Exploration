@@ -4,6 +4,7 @@ import static org.apache.commons.lang3.builder.ToStringBuilder.reflectionToStrin
 import static org.apache.commons.lang3.builder.ToStringStyle.MULTI_LINE_STYLE;
 
 import com.explore.transactions.dto.ActionDto;
+import com.explore.transactions.dto.ActionDto.ActionRowMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -23,12 +24,25 @@ public class Sandbox {
   }
 
   public void runSandbox() {
-//    jdbcTemplate.update("INSERT INTO actions (Name, Description) VALUES ('move', 'move forward')");
+    jdbcTemplate.update("TRUNCATE TABLE actions");
+    insert(new ActionDto("move", "move forward"));
+    insert(new ActionDto("bake", "make cake"));
+    insert(new ActionDto("exercise", "go for a bike ride"));
 
-    List<ActionDto> actions = jdbcTemplate.queryForList("SELECT * FROM actions",
-        ActionDto.class);
+    List<ActionDto> actions = getAllActions();
 
     actions.forEach(System.out::println);
+  }
+
+  private List<ActionDto> getAllActions() {
+    List<ActionDto> actions = jdbcTemplate.query("SELECT * FROM actions",
+        new ActionRowMapper());
+    return actions;
+  }
+
+  private void insert(ActionDto action) {
+    jdbcTemplate.update(
+        String.format("INSERT INTO actions (Name, Description) VALUES ('%s', '%s')", action.name, action.description));
   }
 
   private void firstExperiment() {
@@ -53,6 +67,7 @@ public class Sandbox {
     );
     itemsAfterInsert.forEach(System.out::println);
   }
+
 
 }
 
