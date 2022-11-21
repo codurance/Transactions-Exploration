@@ -4,7 +4,6 @@ import static org.apache.commons.lang3.builder.ToStringBuilder.reflectionToStrin
 import static org.apache.commons.lang3.builder.ToStringStyle.MULTI_LINE_STYLE;
 
 import com.explore.transactions.dto.ActionDto;
-import com.explore.transactions.dto.ActionDto.ActionRowMapper;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -20,32 +19,92 @@ import org.springframework.stereotype.Component;
 @Component
 public class Sandbox {
 
-  private final Connection connection;
-  private final Statement statement;
+  private Connection connectionUsedForInserting;
+  private Statement statement;
   private final DataSource dataSource;
 
   public Sandbox(DataSource dataSource) throws SQLException {
     this.dataSource = dataSource;
-    this.connection = dataSource.getConnection();
-    statement = connection.createStatement();
   }
 
   public void runSandbox() throws SQLException {
+    setTransactionIsolationLevel("SERIALIZABLE");
+
+    connectionUsedForInserting = dataSource.getConnection();
+    Connection newConnection = dataSource.getConnection();
+    printTransactionIsolationLevelSeenFrom(connectionUsedForInserting);
+    printTransactionIsolationLevelSeenFrom(newConnection);
+
+    statement = connectionUsedForInserting.createStatement();
+
+
+    // TODO - close connection & statement
     statement.execute("TRUNCATE TABLE actions");
 
-    // TODO - close connection statement
 
-    insert(new ActionDto("move", "move forward"));
-    insert(new ActionDto("bake", "make cake"));
-    insert(new ActionDto("exercise", "go for a bike ride"));
+    this.connectionUsedForInserting.setAutoCommit(false);
 
-    List<ActionDto> actions = getAllActions();
+    insert(new ActionDto("will be committed 1", "move forward"));
+    insert(new ActionDto("will be committed 2", "make cake"));
+    this.connectionUsedForInserting.commit();
+    System.out.println("");
+    System.out.println("Just after insert & commit");
+    System.out.println("connectionUsedForInserting = " + connectionUsedForInserting);
+    printAllActionsSeenFrom(connectionUsedForInserting);
+    System.out.println("newConnection = " + newConnection);
+    printAllActionsSeenFrom(newConnection);
+    System.out.println("");
 
-    actions.forEach(System.out::println);
+    insert(new ActionDto("will be rolled back 1", "move forward"));
+    insert(new ActionDto("will be rolled back 2", "make cake"));
+    this.connectionUsedForInserting.rollback();
+    System.out.println("");
+    System.out.println("Just after insert & rollback");
+    System.out.println("connectionUsedForInserting = " + connectionUsedForInserting);
+    printAllActionsSeenFrom(connectionUsedForInserting);
+    System.out.println("newConnection = " + newConnection);
+    printAllActionsSeenFrom(newConnection);
+    System.out.println("");
+
+
+    insert(new ActionDto("wont be committed or rolled back 1", "go for a bike ride"));
+    insert(new ActionDto("wont be committed or rolled back 2", "go for a bike ride"));
+    System.out.println("");
+    System.out.println("Just after insert & 'nothing' (no commit or rollback)");
+    System.out.println("connectionUsedForInserting = " + connectionUsedForInserting);
+    printAllActionsSeenFrom(connectionUsedForInserting);
+    System.out.println("newConnection = " + newConnection);
+    printAllActionsSeenFrom(newConnection);
+    System.out.println("");
+
+
+
+//    connection.setAutoCommit(false);
+
+
+
   }
 
-  private List<ActionDto> getAllActions() throws SQLException {
-    ResultSet resultSet = statement.executeQuery("SELECT * FROM actions");
+  private void setTransactionIsolationLevel(String level) throws SQLException {
+    dataSource
+        .getConnection()
+        .createStatement()
+        .execute("SET GLOBAL TRANSACTION ISOLATION LEVEL " + level);
+  }
+
+  private void printTransactionIsolationLevelSeenFrom(Connection connection) throws SQLException {
+    ResultSet rs = connection.createStatement().executeQuery("SELECT @@TX_ISOLATION");
+    rs.next();
+    String transactionIsolationLevel = rs.getString(1);
+    System.out.println("transactionIsolationLevel = " + transactionIsolationLevel);
+  }
+
+  private void printAllActionsSeenFrom(Connection connection) throws SQLException {
+    getAllActions(connection.createStatement()).forEach(System.out::println);
+  }
+
+  private List<ActionDto> getAllActions(Statement statement1) throws SQLException {
+    ResultSet resultSet = statement1.executeQuery("SELECT * FROM actions");
     List<ActionDto> actions = new ArrayList<>();
 
     while (resultSet.next()) {
