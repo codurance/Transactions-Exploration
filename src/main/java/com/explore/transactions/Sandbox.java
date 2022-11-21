@@ -5,8 +5,11 @@ import static org.apache.commons.lang3.builder.ToStringStyle.MULTI_LINE_STYLE;
 
 import com.explore.transactions.dto.ActionDto;
 import com.explore.transactions.dto.ActionDto.ActionRowMapper;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
@@ -17,14 +20,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class Sandbox {
 
-  private final JdbcTemplate jdbcTemplate;
+  private final Connection connection;
+  private final Statement statement;
+  private final DataSource dataSource;
 
-  public Sandbox(DataSource dataSource) {
-    this.jdbcTemplate = new JdbcTemplate(dataSource);
+  public Sandbox(DataSource dataSource) throws SQLException {
+    this.dataSource = dataSource;
+    this.connection = dataSource.getConnection();
+    statement = connection.createStatement();
   }
 
-  public void runSandbox() {
-    jdbcTemplate.update("TRUNCATE TABLE actions");
+  public void runSandbox() throws SQLException {
+    statement.execute("TRUNCATE TABLE actions");
+
+    // TODO - close connection statement
+
     insert(new ActionDto("move", "move forward"));
     insert(new ActionDto("bake", "make cake"));
     insert(new ActionDto("exercise", "go for a bike ride"));
@@ -34,19 +44,28 @@ public class Sandbox {
     actions.forEach(System.out::println);
   }
 
-  private List<ActionDto> getAllActions() {
-    List<ActionDto> actions = jdbcTemplate.query("SELECT * FROM actions",
-        new ActionRowMapper());
+  private List<ActionDto> getAllActions() throws SQLException {
+    ResultSet resultSet = statement.executeQuery("SELECT * FROM actions");
+    List<ActionDto> actions = new ArrayList<>();
+
+    while (resultSet.next()) {
+      actions.add(new ActionDto(
+          resultSet.getInt("Id"),
+          resultSet.getString("Name"),
+          resultSet.getString("Description")
+      ));
+    }
     return actions;
   }
 
-  private void insert(ActionDto action) {
-    jdbcTemplate.update(
+  private void insert(ActionDto action) throws SQLException {
+    statement.execute(
         String.format("INSERT INTO actions (Name, Description) VALUES ('%s', '%s')", action.name, action.description));
   }
 
   private void firstExperiment() {
     System.out.println("In sandbox");
+    JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
 
     List<SimpleItem> items = jdbcTemplate.query(
         "select * from items LIMIT 20",
