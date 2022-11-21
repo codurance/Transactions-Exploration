@@ -3,6 +3,7 @@ package com.explore.transactions;
 import static org.apache.commons.lang3.builder.ToStringBuilder.reflectionToString;
 import static org.apache.commons.lang3.builder.ToStringStyle.MULTI_LINE_STYLE;
 
+import com.explore.transactions.dto.ActionDto;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
@@ -22,26 +23,23 @@ public class Sandbox {
   }
 
   public void runSandbox() {
+//    jdbcTemplate.update("INSERT INTO actions (Name, Description) VALUES ('move', 'move forward')");
 
+    List<ActionDto> actions = jdbcTemplate.queryForList("SELECT * FROM actions",
+        ActionDto.class);
+
+    actions.forEach(System.out::println);
+  }
+
+  private void firstExperiment() {
     System.out.println("In sandbox");
-
 
     List<SimpleItem> items = jdbcTemplate.query(
         "select * from items LIMIT 20",
         new SimpleItemRowMapper()
     );
 
-
     items.forEach(System.out::println);
-
-    /* Next steps
-     * ----------
-     * - Make an insert
-     *
-     * asdf
-      Next steps:
-
-    */
 
     String vmid = UUID.randomUUID().toString();
     int something = jdbcTemplate.update(
@@ -54,7 +52,6 @@ public class Sandbox {
         new SimpleItemRowMapper()
     );
     itemsAfterInsert.forEach(System.out::println);
-
   }
 
 }
