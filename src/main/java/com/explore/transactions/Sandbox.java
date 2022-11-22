@@ -52,28 +52,28 @@ public class Sandbox {
     this.connectionA.setAutoCommit(false);
     this.connectionB.setAutoCommit(false);
 
-    insert(statementA, new ActionDto("will be committed 1", "connection A"));
-    insert(statementA, new ActionDto("will be committed 2", "connection A"));
-    insert(statementA, new ActionDto("will be committed and updated", "connection A - ORIGINAL"));
-    this.connectionA.commit();
+    insert(statementB, new ActionDto("will be committed 1", "INSERTED by B"));
+    insert(statementB, new ActionDto("will be committed 2", "INSERTED by B"));
+    insert(statementB, new ActionDto("will be committed and updated", "INSERTED by B"));
+    this.connectionB.commit();
     showAllActionsFromBothConnections("Just after insert & commit");
 
-    insert(statementA, new ActionDto("will be rolled back 1", "connection A"));
-    insert(statementA, new ActionDto("will be rolled back 2", "connection A"));
-    this.connectionA.rollback();
+    insert(statementB, new ActionDto("will be rolled back 1", "INSERTED by B"));
+    insert(statementB, new ActionDto("will be rolled back 2", "INSERTED by B"));
+    this.connectionB.rollback();
     showAllActionsFromBothConnections("Just after insert & rollback");
 
-    statementA.execute("UPDATE actions SET Description='connection A - UPDATED' WHERE Name='will be committed and updated'");
-    this.connectionA.commit();
+    statementB.execute("UPDATE actions SET Description='UPDATED by B' WHERE Name='will be committed and updated'");
+    this.connectionB.commit();
     showAllActionsFromBothConnections("Just after update & commit <- Showcases Non-Repeatable Read");
 
-    insert(statementA, new ActionDto("NEW action committed", "connection A"));
-    this.connectionA.commit();
+    insert(statementB, new ActionDto("NEW action committed", "INSERTED by B"));
+    this.connectionB.commit();
     showAllActionsFromBothConnections("Just after NEW insert & commit <- Showcases Phantom Read BUT DOESN'T WORK");
 
 
-    insert(statementA, new ActionDto("wont be committed or rolled back 1", "connection A"));
-    insert(statementA, new ActionDto("wont be committed or rolled back 2", "connection A"));
+    insert(statementB, new ActionDto("wont be committed or rolled back 1", "INSERTED by B"));
+    insert(statementB, new ActionDto("wont be committed or rolled back 2", "INSERTED by B"));
     showAllActionsFromBothConnections("Just after insert & 'nothing' (no commit or rollback) <- Showcases Dirty Read");
   }
 
