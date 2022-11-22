@@ -1,5 +1,6 @@
 package com.explore.transactions;
 
+import static com.explore.transactions.IsolationLevel.READ_COMMITTED;
 import static org.apache.commons.lang3.builder.ToStringBuilder.reflectionToString;
 import static org.apache.commons.lang3.builder.ToStringStyle.MULTI_LINE_STYLE;
 
@@ -25,12 +26,12 @@ public class Sandbox {
   private Statement statementB;
   private final DataSource dataSource;
 
-  public Sandbox(DataSource dataSource) throws SQLException {
+  public Sandbox(DataSource dataSource) {
     this.dataSource = dataSource;
   }
 
   public void runSandbox() throws SQLException {
-    setTransactionIsolationLevel("READ COMMITTED");
+    setTransactionIsolationLevel(READ_COMMITTED);
 
     connectionA = dataSource.getConnection();
     connectionB = dataSource.getConnection();
@@ -79,11 +80,11 @@ public class Sandbox {
     System.out.println("");
   }
 
-  private void setTransactionIsolationLevel(String level) throws SQLException {
+  private void setTransactionIsolationLevel(IsolationLevel level) throws SQLException {
     dataSource
         .getConnection()
         .createStatement()
-        .execute("SET GLOBAL TRANSACTION ISOLATION LEVEL " + level);
+        .execute("SET GLOBAL TRANSACTION ISOLATION LEVEL " + level.mySqlStringValue);
   }
 
   private void printTransactionIsolationLevelSeenFrom(Connection connection) throws SQLException {
