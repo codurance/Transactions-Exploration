@@ -1,6 +1,8 @@
 package com.explore.transactions;
 
 import static com.explore.transactions.IsolationLevel.READ_COMMITTED;
+import static com.explore.transactions.IsolationLevel.REPEATABLE_READ;
+import static com.explore.transactions.IsolationLevel.SERIALIZABLE;
 import static org.apache.commons.lang3.builder.ToStringBuilder.reflectionToString;
 import static org.apache.commons.lang3.builder.ToStringStyle.MULTI_LINE_STYLE;
 
@@ -31,7 +33,7 @@ public class Sandbox {
   }
 
   public void runSandbox() throws SQLException {
-    setTransactionIsolationLevel(READ_COMMITTED);
+    setTransactionIsolationLevel(REPEATABLE_READ);
 
     connectionA = dataSource.getConnection();
     connectionB = dataSource.getConnection();
@@ -50,23 +52,28 @@ public class Sandbox {
     this.connectionA.setAutoCommit(false);
     this.connectionB.setAutoCommit(false);
 
-    insert(new ActionDto("will be committed 1", "move forward"));
-    insert(new ActionDto("will be committed 2", "make cake"));
-    insert(new ActionDto("will be committed and updated", "ORIGINAL"));
+    insert(new ActionDto("will be committed 1", "connection A"));
+    insert(new ActionDto("will be committed 2", "connection A"));
+    insert(new ActionDto("will be committed and updated", "connection A - ORIGINAL"));
     this.connectionA.commit();
     showAllActionsFromBothConnections("Just after insert & commit");
 
-    insert(new ActionDto("will be rolled back 1", "move forward"));
-    insert(new ActionDto("will be rolled back 2", "make cake"));
+    insert(new ActionDto("will be rolled back 1", "connection A"));
+    insert(new ActionDto("will be rolled back 2", "connection A"));
     this.connectionA.rollback();
     showAllActionsFromBothConnections("Just after insert & rollback");
 
-    statementB.execute("UPDATE actions SET Description='MANIPULATED' WHERE Name='will be committed and updated'");
-    this.connectionB.commit();
+    statementA.execute("UPDATE actions SET Description='connection A - UPDATED' WHERE Name='will be committed and updated'");
+    this.connectionA.commit();
     showAllActionsFromBothConnections("Just after update & commit");
 
-    insert(new ActionDto("wont be committed or rolled back 1", "go for a bike ride"));
-    insert(new ActionDto("wont be committed or rolled back 2", "go for a bike ride"));
+    insert(new ActionDto("NEW action committed", "connection A"));
+    this.connectionA.commit();
+    showAllActionsFromBothConnections("Just after NEW insert & commit");
+
+
+    insert(new ActionDto("wont be committed or rolled back 1", "connection A"));
+    insert(new ActionDto("wont be committed or rolled back 2", "connection A"));
     showAllActionsFromBothConnections("Just after insert & 'nothing' (no commit or rollback)");
   }
 
