@@ -19,8 +19,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class Sandbox {
 
-  private Connection connectionUsedForInserting;
-  private Statement statement;
+  private Connection connectionA;
+  private Connection connectionB;
+  private Statement statementA;
+  private Statement statementB;
   private final DataSource dataSource;
 
   public Sandbox(DataSource dataSource) throws SQLException {
@@ -28,61 +30,53 @@ public class Sandbox {
   }
 
   public void runSandbox() throws SQLException {
-    setTransactionIsolationLevel("SERIALIZABLE");
+    setTransactionIsolationLevel("READ COMMITTED");
 
-    connectionUsedForInserting = dataSource.getConnection();
-    Connection newConnection = dataSource.getConnection();
-    printTransactionIsolationLevelSeenFrom(connectionUsedForInserting);
-    printTransactionIsolationLevelSeenFrom(newConnection);
+    connectionA = dataSource.getConnection();
+    connectionB = dataSource.getConnection();
 
-    statement = connectionUsedForInserting.createStatement();
+    printTransactionIsolationLevelSeenFrom(connectionA);
+    printTransactionIsolationLevelSeenFrom(connectionB);
+
+    statementA = connectionA.createStatement();
+    statementB = connectionB.createStatement();
 
 
     // TODO - close connection & statement
-    statement.execute("TRUNCATE TABLE actions");
+    statementA.execute("TRUNCATE TABLE actions");
 
 
-    this.connectionUsedForInserting.setAutoCommit(false);
+    this.connectionA.setAutoCommit(false);
+    this.connectionB.setAutoCommit(false);
 
     insert(new ActionDto("will be committed 1", "move forward"));
     insert(new ActionDto("will be committed 2", "make cake"));
-    this.connectionUsedForInserting.commit();
-    System.out.println("");
-    System.out.println("Just after insert & commit");
-    System.out.println("connectionUsedForInserting = " + connectionUsedForInserting);
-    printAllActionsSeenFrom(connectionUsedForInserting);
-    System.out.println("newConnection = " + newConnection);
-    printAllActionsSeenFrom(newConnection);
-    System.out.println("");
+    insert(new ActionDto("will be committed and updated", "ORIGINAL"));
+    this.connectionA.commit();
+    showAllActionsFromBothConnections("Just after insert & commit");
 
     insert(new ActionDto("will be rolled back 1", "move forward"));
     insert(new ActionDto("will be rolled back 2", "make cake"));
-    this.connectionUsedForInserting.rollback();
-    System.out.println("");
-    System.out.println("Just after insert & rollback");
-    System.out.println("connectionUsedForInserting = " + connectionUsedForInserting);
-    printAllActionsSeenFrom(connectionUsedForInserting);
-    System.out.println("newConnection = " + newConnection);
-    printAllActionsSeenFrom(newConnection);
-    System.out.println("");
+    this.connectionA.rollback();
+    showAllActionsFromBothConnections("Just after insert & rollback");
 
+    statementB.execute("UPDATE actions SET Description='MANIPULATED' WHERE Name='will be committed and updated'");
+    this.connectionB.commit();
+    showAllActionsFromBothConnections("Just after update & commit");
 
     insert(new ActionDto("wont be committed or rolled back 1", "go for a bike ride"));
     insert(new ActionDto("wont be committed or rolled back 2", "go for a bike ride"));
+    showAllActionsFromBothConnections("Just after insert & 'nothing' (no commit or rollback)");
+  }
+
+  private void showAllActionsFromBothConnections(String tag) throws SQLException {
     System.out.println("");
-    System.out.println("Just after insert & 'nothing' (no commit or rollback)");
-    System.out.println("connectionUsedForInserting = " + connectionUsedForInserting);
-    printAllActionsSeenFrom(connectionUsedForInserting);
-    System.out.println("newConnection = " + newConnection);
-    printAllActionsSeenFrom(newConnection);
+    System.out.println(tag);
+    System.out.println("connectionA = " + connectionA);
+    printAllActionsSeenFrom(connectionA);
+    System.out.println("connectionB = " + connectionB);
+    printAllActionsSeenFrom(connectionB);
     System.out.println("");
-
-
-
-//    connection.setAutoCommit(false);
-
-
-
   }
 
   private void setTransactionIsolationLevel(String level) throws SQLException {
@@ -118,7 +112,7 @@ public class Sandbox {
   }
 
   private void insert(ActionDto action) throws SQLException {
-    statement.execute(
+    statementA.execute(
         String.format("INSERT INTO actions (Name, Description) VALUES ('%s', '%s')", action.name, action.description));
   }
 
