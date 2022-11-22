@@ -52,33 +52,52 @@ public class Sandbox {
     this.connectionA.setAutoCommit(false);
     this.connectionB.setAutoCommit(false);
 
+    initNewTransactionsOnBothConnections();
+    showAllActionsFromBothConnections("BEFORE: insert & commit");
     insert(statementB, new ActionDto("will be committed 1", "INSERTED by B"));
     insert(statementB, new ActionDto("will be committed 2", "INSERTED by B"));
     insert(statementB, new ActionDto("will be committed and updated", "INSERTED by B"));
     this.connectionB.commit();
-    showAllActionsFromBothConnections("Just after insert & commit");
+    showAllActionsFromBothConnections("AFTER : insert & commit");
 
+
+    initNewTransactionsOnBothConnections();
+    showAllActionsFromBothConnections("BEFORE: insert & rollback");
     insert(statementB, new ActionDto("will be rolled back 1", "INSERTED by B"));
     insert(statementB, new ActionDto("will be rolled back 2", "INSERTED by B"));
     this.connectionB.rollback();
-    showAllActionsFromBothConnections("Just after insert & rollback");
+    showAllActionsFromBothConnections("AFTER : insert & rollback");
 
+
+    initNewTransactionsOnBothConnections();
+    showAllActionsFromBothConnections("BEFORE: update & commit <- Showcases Non-Repeatable Read");
     statementB.execute("UPDATE actions SET Description='UPDATED by B' WHERE Name='will be committed and updated'");
     this.connectionB.commit();
-    showAllActionsFromBothConnections("Just after update & commit <- Showcases Non-Repeatable Read");
+    showAllActionsFromBothConnections("AFTER : update & commit <- Showcases Non-Repeatable Read");
 
+
+    initNewTransactionsOnBothConnections();
+    showAllActionsFromBothConnections("BEFORE: NEW insert & commit <- Showcases Phantom Read BUT DOESN'T WORK");
     insert(statementB, new ActionDto("NEW action committed", "INSERTED by B"));
     this.connectionB.commit();
-    showAllActionsFromBothConnections("Just after NEW insert & commit <- Showcases Phantom Read BUT DOESN'T WORK");
+    showAllActionsFromBothConnections("AFTER : NEW insert & commit <- Showcases Phantom Read BUT DOESN'T WORK");
 
 
+    initNewTransactionsOnBothConnections();
+    showAllActionsFromBothConnections("BEFORE: insert & 'nothing' (no commit or rollback) <- Showcases Dirty Read");
     insert(statementB, new ActionDto("wont be committed or rolled back 1", "INSERTED by B"));
     insert(statementB, new ActionDto("wont be committed or rolled back 2", "INSERTED by B"));
-    showAllActionsFromBothConnections("Just after insert & 'nothing' (no commit or rollback) <- Showcases Dirty Read");
+    showAllActionsFromBothConnections("AFTER : insert & 'nothing' (no commit or rollback) <- Showcases Dirty Read");
+  }
+
+  private void initNewTransactionsOnBothConnections() throws SQLException {
+    this.connectionA.commit();
+    this.connectionB.commit();
+    System.out.println("");
+    System.out.println("");
   }
 
   private void showAllActionsFromBothConnections(String tag) throws SQLException {
-    System.out.println("");
     System.out.println(tag);
     System.out.println("-----------------------------------------------------------------------------------");
     System.out.println("Connection A - " + getTransactionIsolationLevel(connectionA));
@@ -86,7 +105,6 @@ public class Sandbox {
     System.out.println("");
     System.out.println("Connection B - " + getTransactionIsolationLevel(connectionB));
     printAllActionsSeenFrom(connectionB);
-    System.out.println("");
     System.out.println("");
   }
 
@@ -109,11 +127,12 @@ public class Sandbox {
   }
 
   private void printAllActionsSeenFrom(Connection connection) throws SQLException {
-    getAllActions(connection.createStatement()).forEach(System.out::println);
+    getAllActions(connection).forEach(System.out::println);
   }
 
-  private List<ActionDto> getAllActions(Statement statement1) throws SQLException {
-    ResultSet resultSet = statement1.executeQuery("SELECT * FROM actions");
+  private List<ActionDto> getAllActions(Connection connection) throws SQLException {
+    Statement statement = connection.createStatement();
+    ResultSet resultSet = statement.executeQuery("SELECT * FROM actions");
     List<ActionDto> actions = new ArrayList<>();
 
     while (resultSet.next()) {
