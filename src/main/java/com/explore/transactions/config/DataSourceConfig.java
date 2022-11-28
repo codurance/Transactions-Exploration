@@ -42,7 +42,7 @@ public class DataSourceConfig {
   @Profile("MsSql")
   public DataSource msSqlDataSource() {
     return DataSourceBuilder.create()
-        .driverClassName("com.mysql.cj.jdbc.Driver")
+        .driverClassName("com.microsoft.sqlserver.jdbc.SQLServerDriver")
         .url(msSqlJdbcUrl)
         .username(msSqlJdbcUsername)
         .password(msSqlJdbcPassword)
