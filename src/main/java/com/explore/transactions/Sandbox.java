@@ -92,7 +92,9 @@ public class Sandbox {
 
   private void initNewTransactionsOnBothConnections() throws SQLException {
     this.connectionA.commit();
+    this.connectionA.createStatement().execute("select * from items LIMIT 1;"); // MySql
     this.connectionB.commit();
+    this.connectionB.createStatement().execute("select * from items LIMIT 1;"); // MySql
     System.out.println("");
     System.out.println("");
   }
