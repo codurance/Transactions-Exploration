@@ -18,6 +18,7 @@ dependencies {
     // Relevant for Experimentation
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     runtimeOnly 'mysql:mysql-connector-java'
+    implementation 'com.microsoft.sqlserver:mssql-jdbc:11.2.1.jre8'
     implementation 'me.paulschwarz:spring-dotenv:2.5.4'
 
 

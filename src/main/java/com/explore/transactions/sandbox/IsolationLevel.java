@@ -1,4 +1,4 @@
-package com.explore.transactions;
+package com.explore.transactions.sandbox;
 
 public enum IsolationLevel {
 

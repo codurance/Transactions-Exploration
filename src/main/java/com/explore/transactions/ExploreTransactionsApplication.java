@@ -1,6 +1,6 @@
 package com.explore.transactions;
 
-import java.sql.SQLException;
+import com.explore.transactions.sandbox.Sandbox;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -20,7 +20,6 @@ public class ExploreTransactionsApplication implements CommandLineRunner {
 
   @Override
   public void run(String... args) throws Exception {
-    System.out.println("Hello\uD83D\uDE03 ");
     sandbox.runSandbox();
   }
 }

@@ -1,4 +1,4 @@
-package com.explore.transactions.dto;
+package com.explore.transactions.database.action;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
