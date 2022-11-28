@@ -1,7 +1,9 @@
 package com.explore.transactions;
 
 import static com.explore.transactions.IsolationLevel.READ_COMMITTED;
+import static com.explore.transactions.IsolationLevel.READ_UNCOMMITTED;
 import static com.explore.transactions.IsolationLevel.REPEATABLE_READ;
+import static com.explore.transactions.IsolationLevel.SERIALIZABLE;
 import static org.apache.commons.lang3.builder.ToStringBuilder.reflectionToString;
 import static org.apache.commons.lang3.builder.ToStringBuilder.reflectionToString;
 import static org.apache.commons.lang3.builder.ToStringStyle.MULTI_LINE_STYLE;
@@ -33,13 +35,12 @@ public class Sandbox {
   }
 
   public void runSandbox() throws SQLException {
-    setTransactionIsolationLevel(REPEATABLE_READ);
-
     connectionA = dataSource.getConnection();
     connectionB = dataSource.getConnection();
 
-    printTransactionIsolationLevelSeenFrom(connectionA);
-    printTransactionIsolationLevelSeenFrom(connectionB);
+    IsolationLevel isolationLevel = REPEATABLE_READ;
+    setTransactionIsolationLevel(connectionA, isolationLevel);
+    setTransactionIsolationLevel(connectionB, isolationLevel);
 
     statementA = connectionA.createStatement();
     statementB = connectionB.createStatement();
@@ -53,12 +54,12 @@ public class Sandbox {
     this.connectionB.setAutoCommit(false);
 
     initNewTransactionsOnBothConnections();
-    showAllActionsFromBothConnections("BEFORE: insert & commit");
+    showAllActionsFromBothConnections("BEFORE: insert & commit <-- Showcases phantom read\n(select empty set, but not empty on second select)");
     insert(statementB, new ActionDto("will be committed 1", "INSERTED by B"));
     insert(statementB, new ActionDto("will be committed 2", "INSERTED by B"));
     insert(statementB, new ActionDto("will be committed and updated", "INSERTED by B"));
     this.connectionB.commit();
-    showAllActionsFromBothConnections("AFTER : insert & commit");
+    showAllActionsFromBothConnections("AFTER : insert & commit <-- Showcases phantom read\n(select empty set, but not empty on second select)");
 
 
     initNewTransactionsOnBothConnections();
@@ -70,17 +71,11 @@ public class Sandbox {
 
 
     initNewTransactionsOnBothConnections();
-    showAllActionsFromBothConnections("BEFORE: update & commit <- Showcases Non-Repeatable Read");
-    statementB.execute("UPDATE actions SET Description='UPDATED by B' WHERE Name='will be committed and updated'");
+    showAllActionsFromBothConnections("BEFORE: update & commit in Connection B <- Showcases Non-Repeatable Read");
+    String rowToUpdateName = "will be committed and updated";
+    statementB.execute( "UPDATE actions SET Description='UPDATED by B' WHERE Name='" + rowToUpdateName + "'");
     this.connectionB.commit();
-    showAllActionsFromBothConnections("AFTER : update & commit <- Showcases Non-Repeatable Read");
-
-
-    initNewTransactionsOnBothConnections();
-    showAllActionsFromBothConnections("BEFORE: NEW insert & commit <- Showcases Phantom Read BUT DOESN'T WORK");
-    insert(statementB, new ActionDto("NEW action committed", "INSERTED by B"));
-    this.connectionB.commit();
-    showAllActionsFromBothConnections("AFTER : NEW insert & commit <- Showcases Phantom Read BUT DOESN'T WORK");
+    showAllActionsFromBothConnections("AFTER : update & commit in Connection B <- Showcases Non-Repeatable Read");
 
 
     initNewTransactionsOnBothConnections();
@@ -110,11 +105,10 @@ public class Sandbox {
     System.out.println("");
   }
 
-  private void setTransactionIsolationLevel(IsolationLevel level) throws SQLException {
-    dataSource
-        .getConnection()
+  private void setTransactionIsolationLevel(Connection connection, IsolationLevel level) throws SQLException {
+    connection
         .createStatement()
-        .execute("SET GLOBAL TRANSACTION ISOLATION LEVEL " + level.mySqlStringValue);
+        .execute("SET SESSION TRANSACTION ISOLATION LEVEL " + level.mySqlStringValue);
   }
 
   private void printTransactionIsolationLevelSeenFrom(Connection connection) throws SQLException {
@@ -129,12 +123,12 @@ public class Sandbox {
   }
 
   private void printAllActionsSeenFrom(Connection connection) throws SQLException {
-    getAllActions(connection).forEach(System.out::println);
+    queryActionTable(connection, "SELECT * FROM actions").forEach(System.out::println);
   }
 
-  private List<ActionDto> getAllActions(Connection connection) throws SQLException {
+  private List<ActionDto> queryActionTable(Connection connection, String sql) throws SQLException {
     Statement statement = connection.createStatement();
-    ResultSet resultSet = statement.executeQuery("SELECT * FROM actions");
+    ResultSet resultSet = statement.executeQuery(sql);
     List<ActionDto> actions = new ArrayList<>();
 
     while (resultSet.next()) {
@@ -149,7 +143,8 @@ public class Sandbox {
 
   private void insert(Statement statement, ActionDto action) throws SQLException {
     statement.execute(
-        String.format("INSERT INTO actions (Name, Description) VALUES ('%s', '%s')", action.name, action.description));
+        String.format("INSERT INTO actions (Name, Description) VALUES ('%s', '%s')", action.name,
+            action.description));
   }
 
   private void firstExperiment() {
